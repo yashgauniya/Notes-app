@@ -1,9 +1,9 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import HomePage from './pages/HomePage';
-import NoteEditorPage from './pages/NoteEditorPage';
+import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import HomePage from "./pages/HomePage";
+import NoteEditorPage from "./pages/NoteEditorPage";
 
-function App() {
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
@@ -13,5 +13,3 @@ function App() {
     </BrowserRouter>
   );
 }
-
-export default App;

@@ -1,63 +1,34 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-function HomePage() {
-  const [noteTitle, setNoteTitle] = useState('');
+export default function HomePage() {
+  const [title, setTitle] = useState("");
   const navigate = useNavigate();
 
-  const handleCreateNote = async () => {
-    if (!noteTitle.trim()) {
-      alert('Please enter a note title');
-      return;
-    }
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5000/api/notes', {
-        title: noteTitle,
-      });
-
-      const createdNote = response.data;
-      navigate(`/note/${createdNote._id}`);
+      const res = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/notes`, { title });
+      navigate(`/note/${res.data._id}`);
     } catch (error) {
-      console.error('Error creating note:', error);
-      alert('Something went wrong while creating the note.');
+      console.error(error);
     }
   };
 
   return (
-    <div style={styles.container}>
-      <h2>Create New Note</h2>
-      <input
-        type="text"
-        value={noteTitle}
-        onChange={(e) => setNoteTitle(e.target.value)}
-        placeholder="Enter note title"
-        style={styles.input}
-      />
-      <button onClick={handleCreateNote} style={styles.button}>
-        Create Note
-      </button>
+    <div style={{ padding: "20px" }}>
+      <h1>Create New Note</h1>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Note Title"
+          required
+        />
+        <button type="submit">Create</button>
+      </form>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    padding: '40px',
-    textAlign: 'center',
-  },
-  input: {
-    padding: '10px',
-    width: '300px',
-    marginRight: '10px',
-    fontSize: '16px',
-  },
-  button: {
-    padding: '10px 20px',
-    fontSize: '16px',
-    cursor: 'pointer',
-  },
-};
-
-export default HomePage;

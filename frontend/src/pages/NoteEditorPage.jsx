@@ -1,79 +1,97 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import socketIOClient from 'socket.io-client';
-import axios from 'axios';
+import React, { useState, useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
+import { io } from "socket.io-client";
 
-const socket = socketIOClient('http://localhost:5000');
-
-function NoteEditorPage() {
+export default function NoteEditorPage() {
   const { id } = useParams();
-  const [note, setNote] = useState(null);
-  const [content, setContent] = useState('');
-  const [activeUsers, setActiveUsers] = useState(1);
+  const [content, setContent] = useState("");
+  const [title, setTitle] = useState("");
+  const [updatedAt, setUpdatedAt] = useState("");
+  const [activeUsers, setActiveUsers] = useState(0);
+  const socketRef = useRef(null);
+  const lastSavedRef = useRef(null);
 
   useEffect(() => {
     const fetchNote = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/notes/${id}`);
-        setNote(res.data);
-        setContent(res.data.content || '');
+        const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/notes/${id}`);
+        setContent(res.data.content);
+        setTitle(res.data.title);
+        setUpdatedAt(new Date(res.data.updatedAt).toLocaleString());
       } catch (error) {
-        console.error('Error fetching note:', error);
+        console.error(error);
       }
     };
-
     fetchNote();
-  }, [id]);
 
-  useEffect(() => {
-    socket.emit('join_note', id);
+    socketRef.current = io(process.env.REACT_APP_BACKEND_URL);
 
-    socket.on('note_updated_from_server', (updatedContent) => {
-      setContent(updatedContent);
+    socketRef.current.emit("join_note", id);
+
+    socketRef.current.on("initial_data", (data) => {
+      setContent(data.content);
+      setTitle(data.title);
+      setUpdatedAt(new Date(data.updatedAt).toLocaleString());
     });
 
-    socket.on('active_users', (count) => {
+    socketRef.current.on("note_update", (data) => {
+      setContent(data.content);
+      setUpdatedAt(new Date(data.updatedAt).toLocaleString());
+    });
+
+    socketRef.current.on("title_update", (data) => {
+      setTitle(data.title);
+    });
+
+    socketRef.current.on("active_users", (count) => {
       setActiveUsers(count);
     });
 
     return () => {
-      socket.off('note_updated_from_server');
-      socket.off('active_users');
+      socketRef.current.disconnect();
     };
   }, [id]);
 
   const handleContentChange = (e) => {
-    const updatedText = e.target.value;
-    setContent(updatedText);
-    socket.emit('note_update', { noteId: id, content: updatedText });
+    const newContent = e.target.value;
+    setContent(newContent);
+    socketRef.current.emit("note_update", {
+      noteId: id,
+      content: newContent
+    });
   };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      axios.put(`http://localhost:5000/api/notes/${id}`, {
-        content,
-      });
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [content, id]);
-
-  if (!note) return <div>Loading...</div>;
+  const handleTitleChange = (e) => {
+    const newTitle = e.target.value;
+    setTitle(newTitle);
+    socketRef.current.emit("title_update", {
+      noteId: id,
+      title: newTitle
+    });
+    axios.put(`${process.env.REACT_APP_BACKEND_URL}/notes/${id}`, {
+      title: newTitle
+    });
+  };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>{note.title}</h2>
-
-      <p>Last updated: {new Date(note.updatedAt).toLocaleString()}</p>
-
+    <div style={{ padding: "20px" }}>
+      <input
+        type="text"
+        value={title}
+        onChange={handleTitleChange}
+        style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "20px", width: "100%" }}
+      />
+      <div>Active Collaborators: {activeUsers}</div>
+      <div>Last Updated: {updatedAt}</div>
+      {lastSavedRef.current && (
+        <div>Last Saved: {new Date(lastSavedRef.current).toLocaleString()}</div>
+      )}
       <textarea
-        style={{ width: '100%', height: '300px', fontSize: '16px' }}
         value={content}
         onChange={handleContentChange}
+        style={{ width: "100%", height: "300px", padding: "10px" }}
       />
-      <p>Active collaborators: {activeUsers}</p>
     </div>
   );
 }
-
-export default NoteEditorPage;

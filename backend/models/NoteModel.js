@@ -1,27 +1,23 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
+const NoteSchema = new mongoose.Schema({
+  title: String,
+  content: String,
+  updatedAt: { type: Date, default: Date.now },
+  versions: [{
+    content: String,
+    savedAt: { type: Date, default: Date.now }
+  }]
+}, { timestamps: true });
 
-const noteSchema = new mongoose.Schema(
-  {
-    title: {
-      type: String,
-      required: true,
-    },
-    content: {
-      type: String,
-      default: '',
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  {
-    versionKey: false,
+NoteSchema.pre('save', function (next) {
+  if (this.isModified('content')) {
+    this.versions.push({
+      content: this.content,
+      savedAt: new Date()
+    });
   }
-);
+  next();
+});
 
-
-const Note = mongoose.model('Note', noteSchema);
-
-module.exports = Note;
+export default mongoose.model('Note', NoteSchema);
