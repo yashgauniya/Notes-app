@@ -1,0 +1,19 @@
+# Root-level
+.env
+.DS_Store
+
+# Node.js (backend)
+backend/node_modules/
+backend/.env
+
+# React (frontend)
+frontend/node_modules/
+frontend/.env
+
+# Logs
+logs
+*.log
+
+# Optional:
+dist/
+build/
