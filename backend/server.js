@@ -13,6 +13,9 @@ const server = http.createServer(app);
 app.use(cors());
 app.use(express.json());
 app.use('/notes', noteRoutes);
+app.get('/', (req, res) => {
+  res.send('Server is running! Visit /notes for API');
+});
 
 initSocket(server);
 
