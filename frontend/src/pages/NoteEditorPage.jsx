@@ -25,7 +25,7 @@ export default function NoteEditorPage() {
     };
     fetchNote();
 
-    socketRef.current = io(process.env.REACT_APP_BACKEND_URL);
+    socketRef.current = io(process.env.REACT_APP_SOCKET_URL, { transports: ["websocket"] });
 
     socketRef.current.emit("join_note", id);
 
