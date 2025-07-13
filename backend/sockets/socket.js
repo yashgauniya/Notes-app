@@ -9,20 +9,20 @@ export const initSocket = (server) => {
     }
   });
 
-  const saveNoteToDB = async (noteId, content, title) => {
+  const saveNoteToDB = async (noteId, content, title = null) => {
     try {
-      await Note.findByIdAndUpdate(noteId, {
-        content,
-        title,
-        updatedAt: new Date()
-      });
+      const updateData = { updatedAt: new Date() };
+      if (content !== null) updateData.content = content;
+      if (title !== null) updateData.title = title;
+
+      await Note.findByIdAndUpdate(noteId, updateData, { new: true });
     } catch (error) {
-      console.error('Error saving note:', error);
+      console.error('DB Save Error:', error);
     }
   };
 
   io.on('connection', (socket) => {
-    const saveIntervals = {};
+    const saveTimeouts = {};
 
     socket.on('join_note', async (noteId) => {
       socket.join(noteId);
@@ -38,35 +38,31 @@ export const initSocket = (server) => {
       }
     });
 
-    socket.on('note_update', async ({ noteId, content }) => {
-      socket.to(noteId).emit('note_update', {
-        content,
-        updatedAt: new Date()
-      });
+    socket.on('note_update', ({ noteId, content }) => {
+      socket.to(noteId).emit('note_update', { content, updatedAt: new Date() });
 
-      if (!saveIntervals[noteId]) {
-        saveIntervals[noteId] = setInterval(() => {
-          saveNoteToDB(noteId, content);
-        }, 5000);
+      if (saveTimeouts[noteId]) {
+        clearTimeout(saveTimeouts[noteId]);
       }
+
+      saveTimeouts[noteId] = setTimeout(() => {
+        saveNoteToDB(noteId, content);
+        delete saveTimeouts[noteId];
+      }, 5000);
     });
 
     socket.on('title_update', async ({ noteId, title }) => {
-      socket.to(noteId).emit('title_update', {
-        title,
-        updatedAt: new Date()
-      });
+      socket.to(noteId).emit('title_update', { title, updatedAt: new Date() });
       await saveNoteToDB(noteId, null, title);
     });
 
-    socket.on('disconnect', () => {
-      Object.keys(saveIntervals).forEach(noteId => {
-        const room = io.sockets.adapter.rooms.get(noteId);
-        if (!room || room.size === 0) {
-          clearInterval(saveIntervals[noteId]);
-          delete saveIntervals[noteId];
+    socket.on('disconnecting', () => {
+      for (const noteId of socket.rooms) {
+        if (saveTimeouts[noteId]) {
+          clearTimeout(saveTimeouts[noteId]);
+          delete saveTimeouts[noteId];
         }
-      });
+      }
     });
 
     const updateUserCount = (roomId) => {

@@ -9,8 +9,8 @@ export default function NoteEditorPage() {
   const [title, setTitle] = useState("");
   const [updatedAt, setUpdatedAt] = useState("");
   const [activeUsers, setActiveUsers] = useState(0);
+  const [lastSaved, setLastSaved] = useState(null);
   const socketRef = useRef(null);
-  const lastSavedRef = useRef(null);
 
   useEffect(() => {
     const fetchNote = async () => {
@@ -23,9 +23,12 @@ export default function NoteEditorPage() {
         console.error(error);
       }
     };
+
     fetchNote();
 
-    socketRef.current = io(process.env.REACT_APP_SOCKET_URL, { transports: ["websocket"] });
+    socketRef.current = io(process.env.REACT_APP_SOCKET_URL, {
+      transports: ["websocket"]
+    });
 
     socketRef.current.emit("join_note", id);
 
@@ -38,10 +41,12 @@ export default function NoteEditorPage() {
     socketRef.current.on("note_update", (data) => {
       setContent(data.content);
       setUpdatedAt(new Date(data.updatedAt).toLocaleString());
+      setLastSaved(new Date());
     });
 
     socketRef.current.on("title_update", (data) => {
       setTitle(data.title);
+      setLastSaved(new Date());
     });
 
     socketRef.current.on("active_users", (count) => {
@@ -69,9 +74,6 @@ export default function NoteEditorPage() {
       noteId: id,
       title: newTitle
     });
-    axios.put(`${process.env.REACT_APP_BACKEND_URL}/notes/${id}`, {
-      title: newTitle
-    });
   };
 
   return (
@@ -80,13 +82,16 @@ export default function NoteEditorPage() {
         type="text"
         value={title}
         onChange={handleTitleChange}
-        style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "20px", width: "100%" }}
+        style={{
+          fontSize: "24px",
+          fontWeight: "bold",
+          marginBottom: "20px",
+          width: "100%"
+        }}
       />
       <div>Active Collaborators: {activeUsers}</div>
       <div>Last Updated: {updatedAt}</div>
-      {lastSavedRef.current && (
-        <div>Last Saved: {new Date(lastSavedRef.current).toLocaleString()}</div>
-      )}
+      {lastSaved && <div>Last Saved: {lastSaved.toLocaleString()}</div>}
       <textarea
         value={content}
         onChange={handleContentChange}
